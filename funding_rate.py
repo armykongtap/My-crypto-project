@@ -6,25 +6,37 @@ from binance.client import Client
 client = Client()
 
 
-def get_avg_funding_rate(symbol: str, limit: int = 30) -> float:
-    funding_rate = client.futures_funding_rate(symbol=symbol, limit=str(limit))
-    df = pd.DataFrame(funding_rate)
+def get_avg_funding_rate(days: int) -> pd.Series:
+    fr_list = list()
+
+    dt_range = (
+        pd.date_range(
+            end=pd.Timestamp.now(tz="UTC"), periods=days + 1, freq="D"
+        ).astype(int)
+        // 10 ** 6
+    )
+
+    for i in range(len(dt_range) - 1):
+        fr_list += client.futures_funding_rate(
+            startTime=str(dt_range[i]),
+            endTime=str(dt_range[i + 1]),
+            limit=1000,
+        )
+
+    df = pd.DataFrame(fr_list)
+
+    df["fundingTime"] = pd.to_datetime(df["fundingTime"], unit="ms")
     df["fundingRate"] = df["fundingRate"].astype(np.float64)
-    return df["fundingRate"].mean()
+    df = df.set_index("symbol")
+
+    return df["fundingRate"].groupby(level=0).mean()
 
 
-def get_futures_exchange_info() -> pd.DataFrame:
-    info = client.futures_exchange_info()
-    df = pd.DataFrame(info["symbols"])
-    return df
+d = 5
 
+print(f"Average {d} days of funding rate.")
 
-future_info = get_futures_exchange_info()
-future_info = future_info[future_info["contractType"] == "PERPETUAL"]
-
-avg_funding_rate = future_info["symbol"].apply(get_avg_funding_rate)
-avg_funding_rate.index = future_info["symbol"]
-
+avg_funding_rate = get_avg_funding_rate(days=d)
 avg_funding_rate = avg_funding_rate.sort_values(ascending=False)
 
-print(avg_funding_rate.head(10))
+print(avg_funding_rate.head(5))
