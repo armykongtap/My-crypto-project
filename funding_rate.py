@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-
 from binance.client import Client
 
 client = Client()
@@ -46,8 +45,24 @@ d = 3
 print(f"Average {d} days of funding rate.")
 avg_funding_rate = get_avg_funding_rate(days=d)
 print(avg_funding_rate.head(10))
+print()
 
 print(f"Last funding rate.")
 last_funding_rate = get_current_funding_rate()
 print(last_funding_rate.head(10))
+print()
 
+print(f"Most Average and Last funding rate.")
+avg_last_funding_rate = (
+    avg_funding_rate.head(20)
+    .to_frame("avgFundingRate")
+    .merge(
+        last_funding_rate.head(20),
+        how="inner",
+        left_index=True,
+        right_index=True,
+        validate="1:1",
+    )
+    .sort_values("lastFundingRate", ascending=False)
+)
+print(avg_last_funding_rate)
