@@ -1,6 +1,7 @@
-import numpy as np
-import pandas as pd
+import time
+from statistics import mean
 
+import pandas as pd
 from binance.client import Client
 
 client = Client()
@@ -28,7 +29,16 @@ def get_premium() -> pd.Series:
     return premium
 
 
-print(f"Premium Index")
-premium = get_premium().sort_values(ascending=False)
-print(premium.head(10))
-print(premium.tail(10))
+symbol = input("Symbol : ")
+print(f"Premium Index : {symbol}")
+
+l = list()
+
+for i in range(5):
+    premium = get_premium().sort_values(ascending=False)
+    p = premium.loc[symbol]
+    print(p)
+    l.append(p)
+    time.sleep(10)
+
+print(f"Average : {mean(l)}")
