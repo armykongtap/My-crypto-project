@@ -1,7 +1,5 @@
 import pandas as pd
 import requests
-from bs4 import BeautifulSoup
-
 from binance.client import Client
 from binance.enums import (
     ORDER_TYPE_LIMIT,
@@ -10,19 +8,12 @@ from binance.enums import (
     SIDE_SELL,
     TIME_IN_FORCE_GTC,
 )
+from bs4 import BeautifulSoup
 
-bn_client = Client()
+import config as cfg
 
-
-def get_exchange_rate(symbol: str) -> float:
-    url = f"https://finance.yahoo.com/quote/USDTHB=X?ltr=1"
-    res = requests.request("GET", url)
-
-    soup = BeautifulSoup(res.text, "html.parser")
-
-    return float(
-        soup.find("span", class_="Trsdu(0.3s) Fw(b) Fz(36px) Mb(-4px) D(ib)").text
-    )
+# bn_client = Client()
+bn_client = Client(cfg.api_key, cfg.api_secret)
 
 
 def bitkub_price() -> pd.Series:
@@ -37,7 +28,7 @@ def bitkub_price() -> pd.Series:
 
     price = df["last"]
     price.name = "price"
-    price = price / USDTHB
+    price = price / price["USDTUSDT"]
 
     return price
 
@@ -55,15 +46,31 @@ def get_premium() -> pd.Series:
 
     premium = ex1 / ex2
     premium = premium.dropna()
-    premium = premium.sort_values(ascending=False)
 
     return premium
 
 
-USDTHB = get_exchange_rate(symbol="USDTHB")
+def get_withdraw_fee() -> pd.Series:
+    res = bn_client.get_asset_details()
+    df = pd.DataFrame(res["assetDetail"]).T
+    df.index.name = "symbol"
+
+    df.index += "USDT"
+
+    df["price"] = binance_price()
+
+    df["withdrawFee"] *= df["price"]
+
+    return df["withdrawFee"].dropna()
+
 
 if __name__ == "__main__":
     print("Premium between BitKub and Binance")
-    premium = get_premium()
-    print(premium.head(10))
+    premium = get_premium().sort_values(ascending=False).to_frame()
+    premium["withdrawFee"] = get_withdraw_fee()
+
+    premium = premium[premium["withdrawFee"] < 10]
+
+    print(premium.head(5))
+    print(premium.tail(5))
 
