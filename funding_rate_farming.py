@@ -14,8 +14,8 @@ from binance.websockets import BinanceSocketManager
 
 import config as cfg
 
-# client = Client(cfg.api_key, cfg.api_secret)
-client = Client()
+client = Client(cfg.api_key, cfg.api_secret)
+# client = Client()
 bm = BinanceSocketManager(client)
 
 
@@ -186,7 +186,7 @@ def sub_premium_buy(
         except TypeError as e:
             print(e)
             return
-        print(f"Premium {premium:.8f}")
+        print(f"{symbol} premium: {premium:.8f}")
         if premium > min_premium:
             bm.close()
             trigger_func(*args, **kwargs)
@@ -224,21 +224,21 @@ def sub_premium_sell(
 
 
 if __name__ == "__main__":
-    symbol = "IOTAUSDT"
-    volume = 40
+    symbol = "DOTUSDT"
+    volume = 1
 
-    sub_premium_buy(
-        symbol=symbol,
-        min_premium=0.005,
-        trigger_func=buy_and_short,
-        kwargs={"symbol": symbol, "volume": volume},
-    )
-
-    # sub_premium_sell(
+    # sub_premium_buy(
     #     symbol=symbol,
-    #     max_premium=0.001,
-    #     trigger_func=sell_and_long,
+    #     min_premium=0.001,
+    #     trigger_func=buy_and_short,
     #     kwargs={"symbol": symbol, "volume": volume},
     # )
+
+    sub_premium_sell(
+        symbol=symbol,
+        max_premium=-0.001,
+        trigger_func=sell_and_long,
+        kwargs={"symbol": symbol, "volume": volume},
+    )
 
     Timer(interval=600, function=bm.close).start()

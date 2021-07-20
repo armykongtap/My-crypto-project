@@ -16,8 +16,27 @@ import config as cfg
 bn_client = Client(cfg.api_key, cfg.api_secret)
 
 
+def get_p2p_biance_price(
+    asset: str = "BUSD", fait: str = "THB", tradeType: str = "SELL"
+) -> float:
+    url = "https://c2c.binance.com/bapi/c2c/v2/friendly/c2c/adv/search"
+    json = {
+        "page": 1,
+        "rows": 1,
+        "payTypes": [],
+        "asset": asset,
+        "tradeType": tradeType,
+        "fiat": fait,
+        "publisherType": None,
+        "merchantCheck": False,
+    }
+    res = requests.post(url, json=json)
+    out = float(res.json()["data"][0]["adv"]["price"])
+    return out
+
+
 def bitkub_price() -> pd.Series:
-    url = f"https://api.bitkub.com/api/market/ticker"
+    url = "https://api.bitkub.com/api/market/ticker"
 
     res = requests.get(url)
 
@@ -28,7 +47,7 @@ def bitkub_price() -> pd.Series:
 
     price = df["last"]
     price.name = "price"
-    price = price / price["USDTUSDT"]
+    price = price / USDTHB
 
     return price
 
@@ -64,6 +83,8 @@ def get_withdraw_fee() -> pd.Series:
     return df["withdrawFee"].dropna()
 
 
+USDTHB = get_p2p_biance_price()
+
 if __name__ == "__main__":
     print("Premium between BitKub and Binance")
     premium = get_premium().sort_values(ascending=False).to_frame()
@@ -71,6 +92,4 @@ if __name__ == "__main__":
 
     premium = premium[premium["withdrawFee"] < 10]
 
-    print(premium.head(5))
-    print(premium.tail(5))
-
+    print(premium.head(10))

@@ -16,14 +16,16 @@ def get_avg_funding_rate(days: int) -> pd.Series:
     )
 
     for i in range(len(dt_range) - 1):
-        fr_list += client.futures_funding_rate(
+        res = client.futures_funding_rate(
             startTime=str(dt_range[i]), endTime=str(dt_range[i + 1]), limit=1000,
         )
+        assert len(res) < 1000
+        fr_list.extend(res)
 
     df = pd.DataFrame(fr_list)
 
     df["fundingTime"] = pd.to_datetime(df["fundingTime"], unit="ms")
-    df["fundingRate"] = df["fundingRate"].astype(np.float64)
+    df["fundingRate"] = df["fundingRate"].astype(float)
     df = df.set_index("symbol")
 
     fr = df["fundingRate"].groupby(level=0).mean()
@@ -36,7 +38,7 @@ def get_current_funding_rate() -> pd.Series:
     df = pd.DataFrame(client.futures_mark_price())
     df = df.set_index("symbol")
 
-    fr = df["lastFundingRate"].sort_values(ascending=False)
+    fr = df["lastFundingRate"].astype("float").sort_values(ascending=False)
 
     return fr
 
@@ -44,13 +46,11 @@ def get_current_funding_rate() -> pd.Series:
 d = 3
 print(f"Average {d} days of funding rate.")
 avg_funding_rate = get_avg_funding_rate(days=d)
-print(avg_funding_rate.head(10))
-print()
+print(avg_funding_rate.head(10), end="\n\n")
 
 print(f"Last funding rate.")
 last_funding_rate = get_current_funding_rate()
-print(last_funding_rate.head(10))
-print()
+print(last_funding_rate.head(10), end="\n\n")
 
 print(f"Most Average and Last funding rate.")
 avg_last_funding_rate = (
@@ -65,4 +65,9 @@ avg_last_funding_rate = (
     )
     .sort_values("lastFundingRate", ascending=False)
 )
+
+# remove less than 0
+avg_last_funding_rate[avg_last_funding_rate < 0] = np.nan
+avg_last_funding_rate = avg_last_funding_rate.dropna()
+
 print(avg_last_funding_rate)
